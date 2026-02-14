@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -76,7 +75,6 @@ func startMetrics(ctx context.Context, onStop func()) {
 		shutdownGraceTimeout = 2 * time.Second
 	)
 
-	fmt.Println(metricPort())
 	server := &http.Server{
 		Addr:              metricPort(),
 		Handler:           handler,

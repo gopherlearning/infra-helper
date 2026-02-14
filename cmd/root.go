@@ -46,6 +46,9 @@ var rootCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
+		if len(metrics) == 0 {
+			noMetrics = true
+		}
 		// Обработка флагов --metrics и --no-metrics
 		if noMetrics {
 			log.Info().Msg("экспорт метрик отключён.")
@@ -93,7 +96,7 @@ func init() {
 	// when this action is called directly.
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "v", false, "включить debug-режим")
 	rootCmd.PersistentFlags().BoolVar(&version, "version", false, "показать версию приложения")
-	rootCmd.PersistentFlags().StringVar(&metrics, "metrics", ":9101", metricsUsage)
+	rootCmd.PersistentFlags().StringVar(&metrics, "metrics", "", metricsUsage)
 	rootCmd.PersistentFlags().BoolVar(&noMetrics, "no-metrics", false, "отключить экспорт метрик")
 
 	listupdater.Register(rootCmd)

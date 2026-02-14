@@ -1,0 +1,9 @@
+bin/
+data/
+*.dat
+*.tmp
+.git/
+.idea/
+.vscode/
+**/*_test.go
+coverage.out
