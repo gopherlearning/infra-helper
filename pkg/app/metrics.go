@@ -2,10 +2,10 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,19 +14,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// StartMetrics .
-//
-//nolint:contextcheck
-func startMetrics() {
-	ctx, onStop := AddJob("metrics")
-
+func startMetrics(ctx context.Context, onStop func()) {
 	defer onStop()
 
 	isHealthy.Store(false)
 	isReady.Store(false)
 
 	handler := http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		if req.Method == "GET" {
+		if req.Method == http.MethodGet {
 			switch req.URL.Path {
 			// case "/targets":
 			// 	t := fack.GetTargets()
@@ -52,6 +47,7 @@ func startMetrics() {
 			case "/readyz":
 				if r, ok := isReady.Load().(bool); !r || !ok {
 					resp.WriteHeader(http.StatusServiceUnavailable)
+
 					return
 				}
 
@@ -61,6 +57,7 @@ func startMetrics() {
 			case "/healthz":
 				if r, ok := isHealthy.Load().(bool); !r || !ok {
 					resp.WriteHeader(http.StatusServiceUnavailable)
+
 					return
 				}
 
@@ -73,32 +70,35 @@ func startMetrics() {
 		promhttp.HandlerFor(metrics, promhttp.HandlerOpts{}).ServeHTTP(resp, req)
 	})
 
-	h := &http.Server{
+	const (
+		readHeaderTimeout    = 60 * time.Second
+		shutdownGraceTimeout = 2 * time.Second
+	)
+
+	server := &http.Server{
 		Addr:              metricPort(),
 		Handler:           handler,
-		ReadHeaderTimeout: 60 * time.Second,
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
-	ctxDead, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 
 	go func() {
 		<-ctx.Done()
 
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownGraceTimeout)
 		defer cancel()
 
-		if err := h.Shutdown(ctxDead); err != nil {
-			log.Err(err)
+		shutdownErr := server.Shutdown(shutdownCtx)
+		if shutdownErr != nil {
+			log.Error().Err(shutdownErr).Msg("shutdown metrics server")
 		}
 	}()
 
-	err := h.ListenAndServe()
-	if err != nil {
-		if err.Error() != "http: Server closed" {
-			log.Error().Err(err).Msg("start metrics failed")
-			return
-		}
-	}
+	err := server.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Error().Err(err).Msg("start metrics failed")
 
-	cancel()
+		return
+	}
 }
 
 // func (d StartMetrics) AfterApplyerror {
@@ -109,13 +109,16 @@ func startMetrics() {
 // 	return nil
 // }
 
+// SetReady sets the readiness probe state.
 func SetReady(r bool) {
 	isReady.Store(r)
 }
 
+// SetHealthy sets the liveness probe state.
 func SetHealthy(h bool) {
 	isHealthy.Store(h)
 }
+
 func metricPort() string {
 	port := os.Getenv("METRICS")
 	if len(port) != 0 && strings.ContainsRune(port, ':') {
@@ -125,7 +128,10 @@ func metricPort() string {
 	return ":9100"
 }
 
-func StartMetrics(ctx context.Context, wg *sync.WaitGroup) {
+// StartMetrics configures and starts the metrics HTTP server.
+//
+// Call it in a goroutine if you want it to be non-blocking.
+func StartMetrics(ctx context.Context, onStop func()) {
 	appMetric := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "app",
 		Help: "Application name",
@@ -142,9 +148,15 @@ func StartMetrics(ctx context.Context, wg *sync.WaitGroup) {
 	}, []string{"name"},
 	)
 
-	metrics.MustRegister(appMetric, jobMetric, collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}), collectors.NewBuildInfoCollector())
+	metrics.MustRegister(
+		appMetric,
+		jobMetric,
+		collectors.NewGoCollector(),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		collectors.NewBuildInfoCollector(),
+	)
 
-	go startMetrics()
+	startMetrics(ctx, onStop)
 }
 
 // func enableCollectors(nc *collector.NodeCollector, collectors ...string) {

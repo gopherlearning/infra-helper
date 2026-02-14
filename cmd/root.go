@@ -1,6 +1,4 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
+// Package cmd wires the Cobra CLI commands.
 package cmd
 
 import (
@@ -20,11 +18,16 @@ var (
 	noMetrics bool
 )
 
+const (
+	defaultMetricsAddr = ":9101"
+	metricsUsage       = "адрес для экспорта метрик (по умолчанию :9101 при указании без значения)"
+)
+
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "infra.helper",
 	Short: "Инструмент поддержки инфраструктуры",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		// Если нет подкоманды и установлен флаг --version
 		if version {
 			app.LogVersion()
@@ -35,7 +38,7 @@ var rootCmd = &cobra.Command{
 		_ = cmd.Help()
 		// app.WG().Done()
 	},
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 		app.Init(debug)
 
 		if version {
@@ -46,10 +49,11 @@ var rootCmd = &cobra.Command{
 		// Обработка флагов --metrics и --no-metrics
 		if noMetrics {
 			log.Info().Msg("экспорт метрик отключён.")
+
 			metrics = "" // Полностью отключаем метрики
 		} else {
 			if !cmd.Flags().Changed("metrics") && metrics == "" {
-				metrics = ":9101" // Значение по умолчанию
+				metrics = defaultMetricsAddr
 			}
 
 			// if metrics != "" {
@@ -58,7 +62,7 @@ var rootCmd = &cobra.Command{
 			// }
 		}
 	},
-	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+	PersistentPostRun: func(_ *cobra.Command, _ []string) {
 		time.Sleep(time.Second)
 		// 	log.Info().Msg("waiting for completion")
 		// 	log.Info().Msg("Дождались 123")
@@ -88,7 +92,7 @@ func init() {
 	// when this action is called directly.
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "v", false, "включить debug-режим")
 	rootCmd.PersistentFlags().BoolVar(&version, "version", false, "показать версию приложения")
-	rootCmd.PersistentFlags().StringVar(&metrics, "metrics", "", "адрес для экспорта метрик (по умолчанию :9001 при указании без значения)")
+	rootCmd.PersistentFlags().StringVar(&metrics, "metrics", "", metricsUsage)
 	rootCmd.PersistentFlags().BoolVar(&noMetrics, "no-metrics", false, "отключить экспорт метрик")
 
 	listupdater.Register(rootCmd)
