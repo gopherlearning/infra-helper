@@ -65,6 +65,10 @@ func (s *service) syncOne(ctx context.Context, lst list) error {
 		return fmt.Errorf("ensure plain: %w", plainErr)
 	}
 
+	// Invalidate per-category cache on refresh.
+	catDirPath := filepath.Join(s.plainDir, plainCatsDir, lst.Name)
+	_ = os.RemoveAll(catDirPath)
+
 	return nil
 }
 

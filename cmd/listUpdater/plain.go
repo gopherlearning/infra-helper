@@ -2,6 +2,7 @@ package listupdater
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,11 @@ const (
 	plainDirPerm  os.FileMode = 0o750
 )
 
+var (
+	errCategoryNotFound    = errors.New("category not found")
+	errCategoryUnsupported = errors.New("categories unsupported")
+)
+
 func ensurePlain(originalPath string, plainPath string) error {
 	//nolint:gosec // file path is derived from trusted config (no user input).
 	origBytes, err := os.ReadFile(originalPath)
@@ -31,6 +37,37 @@ func ensurePlain(originalPath string, plainPath string) error {
 	}
 
 	return copyFileAtomically(originalPath, plainPath)
+}
+
+func ensurePlainCategory(originalPath string, plainPath string, category string) error {
+	//nolint:gosec // file path is derived from trusted config (no user input).
+	origBytes, err := os.ReadFile(originalPath)
+	if err != nil {
+		return fmt.Errorf("read original: %w", err)
+	}
+
+	lines, ok, found := tryDecodeGeoSiteDatCategory(origBytes, category)
+	if !ok {
+		return errCategoryUnsupported
+	}
+
+	if !found {
+		return fmt.Errorf("%w: %s", errCategoryNotFound, category)
+	}
+
+	return writeLinesAtomically(plainPath, lines)
+}
+
+func listGeoSiteCategoriesFromFile(originalPath string) ([]string, bool, error) {
+	//nolint:gosec // file path is derived from trusted config (no user input).
+	origBytes, err := os.ReadFile(originalPath)
+	if err != nil {
+		return nil, false, fmt.Errorf("read original: %w", err)
+	}
+
+	categories, ok := tryListGeoSiteCategories(origBytes)
+
+	return categories, ok, nil
 }
 
 func tryDecodeGeoSiteDat(b []byte) ([]string, bool) {
@@ -67,6 +104,88 @@ func tryDecodeGeoSiteDat(b []byte) ([]string, bool) {
 	sort.Strings(lines)
 
 	return lines, true
+}
+
+func tryDecodeGeoSiteDatCategory(b []byte, category string) ([]string, bool, bool) {
+	var geoList routercommon.GeoSiteList
+	if proto.Unmarshal(b, &geoList) != nil {
+		return nil, false, false
+	}
+
+	entries := geoList.GetEntry()
+	if len(entries) == 0 {
+		return nil, false, false
+	}
+
+	catLower := strings.ToLower(strings.TrimSpace(category))
+	if catLower == "" {
+		return nil, true, false
+	}
+
+	found := false
+	seen := make(map[string]struct{})
+
+	for _, site := range entries {
+		codeLower := strings.ToLower(site.GetCountryCode())
+		if codeLower != catLower {
+			continue
+		}
+
+		found = true
+
+		domains := site.GetDomain()
+		for _, dom := range domains {
+			value := normalizePlainValue(dom.GetValue())
+			if value == "" {
+				continue
+			}
+
+			value = strings.ToLower(value)
+			seen[value] = struct{}{}
+		}
+	}
+
+	lines := make([]string, 0, len(seen))
+	for v := range seen {
+		lines = append(lines, v)
+	}
+
+	sort.Strings(lines)
+
+	return lines, true, found
+}
+
+func tryListGeoSiteCategories(b []byte) ([]string, bool) {
+	var geoList routercommon.GeoSiteList
+	if proto.Unmarshal(b, &geoList) != nil {
+		return nil, false
+	}
+
+	entries := geoList.GetEntry()
+	if len(entries) == 0 {
+		return nil, false
+	}
+
+	seen := make(map[string]struct{})
+
+	for _, site := range entries {
+		code := strings.TrimSpace(site.GetCountryCode())
+		if code == "" {
+			continue
+		}
+
+		code = strings.ToLower(code)
+		seen[code] = struct{}{}
+	}
+
+	categories := make([]string, 0, len(seen))
+	for c := range seen {
+		categories = append(categories, c)
+	}
+
+	sort.Strings(categories)
+
+	return categories, true
 }
 
 func normalizePlainValue(value string) string {

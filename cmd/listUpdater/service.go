@@ -1,6 +1,7 @@
 package listupdater
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 const (
 	originalDirName = "original"
 	plainDirName    = "plain"
+	plainCatsDir    = "categories"
 
 	clientTimeout         = 60 * time.Second
 	readHeaderTimeout     = 10 * time.Second
@@ -99,6 +101,8 @@ func (s *service) runHTTP() {
 		return ctx.NoContent(http.StatusOK)
 	})
 	// Order matters: /plain/* must be registered before /:name.
+	echoSrv.GET("/plain/:name/", s.handlePlainCategories)
+	echoSrv.GET("/plain/:name/:category", s.handlePlainCategory)
 	echoSrv.GET("/plain/:name", s.handlePlain)
 	echoSrv.GET("/", s.handleIndex)
 	echoSrv.GET("/:name", s.handleOriginal)
@@ -144,7 +148,7 @@ func (s *service) handleOriginal(ctx *echo.Context) error {
 	const notFoundMsg = "not found"
 
 	name := ctx.Param("name")
-	if name == "" || strings.Contains(name, "/") {
+	if !isSafeSegment(name) {
 		return echo.NewHTTPError(http.StatusNotFound, notFoundMsg)
 	}
 
@@ -166,7 +170,7 @@ func (s *service) handlePlain(ctx *echo.Context) error {
 	const notFoundMsg = "not found"
 
 	name := ctx.Param("name")
-	if name == "" || strings.Contains(name, "/") {
+	if !isSafeSegment(name) {
 		return echo.NewHTTPError(http.StatusNotFound, notFoundMsg)
 	}
 
@@ -206,4 +210,144 @@ func (s *service) handlePlain(ctx *echo.Context) error {
 	}
 
 	return nil
+}
+
+func (s *service) handlePlainCategory(ctx *echo.Context) error {
+	const notFoundMsg = "not found"
+
+	name := ctx.Param("name")
+
+	category := ctx.Param("category")
+	if !isSafeSegment(name) || !isSafeSegment(category) {
+		return echo.NewHTTPError(http.StatusNotFound, notFoundMsg)
+	}
+
+	if _, ok := s.lists[name]; !ok {
+		return echo.NewHTTPError(http.StatusNotFound, notFoundMsg)
+	}
+
+	origPath := filepath.Join(s.origDir, name)
+	plainPath := filepath.Join(s.plainDir, plainCatsDir, name, category)
+
+	_, origStatErr := os.Stat(origPath)
+	if origStatErr != nil {
+		if os.IsNotExist(origStatErr) {
+			return echo.NewHTTPError(http.StatusNotFound, notFoundMsg)
+		}
+
+		log.Error().Err(origStatErr).Str("name", name).Msg("stat original failed")
+
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+
+	_, plainStatErr := os.Stat(plainPath)
+	if plainStatErr != nil {
+		genErr := ensurePlainCategory(origPath, plainPath, category)
+
+		httpErr := mapCategoryPlainError(genErr, name, category)
+		if httpErr != nil {
+			return httpErr
+		}
+	}
+
+	ctx.Response().Header().Set(echo.HeaderContentType, "text/plain; charset=utf-8")
+
+	err := ctx.File(plainPath)
+	if err != nil {
+		return fmt.Errorf("serve category plain file: %w", err)
+	}
+
+	return nil
+}
+
+func (s *service) handlePlainCategories(ctx *echo.Context) error {
+	const notFoundMsg = "not found"
+
+	name := ctx.Param("name")
+	if !isSafeSegment(name) {
+		return echo.NewHTTPError(http.StatusNotFound, notFoundMsg)
+	}
+
+	if _, ok := s.lists[name]; !ok {
+		return echo.NewHTTPError(http.StatusNotFound, notFoundMsg)
+	}
+
+	origPath := filepath.Join(s.origDir, name)
+
+	_, origStatErr := os.Stat(origPath)
+	if origStatErr != nil {
+		if os.IsNotExist(origStatErr) {
+			return echo.NewHTTPError(http.StatusNotFound, notFoundMsg)
+		}
+
+		log.Error().Err(origStatErr).Str("name", name).Msg("stat original failed")
+
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+
+	categories, isDat, catErr := listGeoSiteCategoriesFromFile(origPath)
+	if catErr != nil {
+		log.Error().Err(catErr).Str("name", name).Msg("list categories failed")
+
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+	}
+
+	if !isDat {
+		return echo.NewHTTPError(http.StatusBadRequest, "categories are supported only for .dat sources")
+	}
+
+	ctx.Response().Header().Set(echo.HeaderContentType, "text/plain; charset=utf-8")
+
+	err := ctx.String(http.StatusOK, strings.Join(categories, "\n")+"\n")
+	if err != nil {
+		return fmt.Errorf("write categories response: %w", err)
+	}
+
+	return nil
+}
+
+func mapCategoryPlainError(err error, name string, category string) *echo.HTTPError {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, errCategoryNotFound) {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+
+	if errors.Is(err, errCategoryUnsupported) {
+		return echo.NewHTTPError(http.StatusBadRequest, "categories are supported only for .dat sources")
+	}
+
+	log.Error().Err(err).Str("name", name).Str("category", category).Msg("generate category plain failed")
+
+	return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+}
+
+func isSafeSegment(seg string) bool {
+	if seg == "" {
+		return false
+	}
+
+	if strings.Contains(seg, "/") || strings.Contains(seg, "\\") {
+		return false
+	}
+
+	if strings.Contains(seg, "..") {
+		return false
+	}
+
+	for i := range len(seg) {
+		b := seg[i]
+		switch {
+		case b >= 'a' && b <= 'z':
+		case b >= 'A' && b <= 'Z':
+		case b >= '0' && b <= '9':
+		case b == '.', b == '-', b == '_':
+		default:
+			return false
+		}
+	}
+
+	return true
 }
