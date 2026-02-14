@@ -1,3 +1,4 @@
+// Package listupdater contains the implementation of the list-updater subcommand.
 package listupdater
 
 import (

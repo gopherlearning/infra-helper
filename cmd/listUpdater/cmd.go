@@ -4,29 +4,12 @@ package listupdater
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	svc "infra.helper/cmd/listUpdater/internal/listupdater"
 	"infra.helper/pkg/app"
 )
-
-type config struct {
-	Dir     string        `default:"./data"     mapstructure:"dir"     yaml:"dir"`
-	Listen  string        `default:":8080"      mapstructure:"listen"  yaml:"listen"`
-	Refresh time.Duration `default:"1h"         mapstructure:"refresh" yaml:"refresh"`
-	Lists   []list        `mapstructure:"lists" yaml:"lists"`
-}
-
-type list struct {
-	Name string `mapstructure:"name" yaml:"name"`
-	URL  string `mapstructure:"url"  yaml:"url"`
-	// "" - none
-	// basic - AuthData - user:password
-	// token - AuthData - token
-	AuthType string `mapstructure:"authType" yaml:"authType"`
-	AuthData any    `mapstructure:"authData" yaml:"authData"`
-}
 
 var (
 	configPath        string
@@ -44,7 +27,7 @@ var listUpdaterCmd = &cobra.Command{
 		ctx, onStop := app.AddJob("listUpdater")
 		defer onStop()
 
-		var cfg config
+		var cfg svc.Config
 
 		err := app.ReadFromFile(configPath, &cfg)
 		if err != nil {
@@ -67,7 +50,7 @@ var listUpdaterCmd = &cobra.Command{
 			Int("lists", len(cfg.Lists)).
 			Msg("list-updater started")
 
-		startListUpdater(cfg)
+		svc.Start(cfg)
 
 		<-ctx.Done()
 	},
@@ -80,18 +63,9 @@ func Register(parent *cobra.Command) {
 
 func init() {
 	listUpdaterCmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "configuration file path")
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// listUpdaterCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// listUpdaterCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func validateConfig(cfg config) error {
+func validateConfig(cfg svc.Config) error {
 	if cfg.Listen == "" {
 		return errListenRequired
 	}

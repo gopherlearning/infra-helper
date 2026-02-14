@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -75,6 +76,7 @@ func startMetrics(ctx context.Context, onStop func()) {
 		shutdownGraceTimeout = 2 * time.Second
 	)
 
+	fmt.Println(metricPort())
 	server := &http.Server{
 		Addr:              metricPort(),
 		Handler:           handler,
@@ -141,12 +143,6 @@ func StartMetrics(ctx context.Context, onStop func()) {
 	)
 
 	appMetric.Set(1)
-
-	jobMetric = *prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "job",
-		Help: "Job name",
-	}, []string{"name"},
-	)
 
 	metrics.MustRegister(
 		appMetric,

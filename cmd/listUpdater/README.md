@@ -6,6 +6,11 @@
 
 File: `config.yaml` (YAML).
 
+Implementation note:
+
+- Entry point: `infra-helper/cmd/listUpdater/cmd.go`
+- Implementation: `infra-helper/cmd/listUpdater/internal/listupdater`
+
 Example:
 
 ```yaml

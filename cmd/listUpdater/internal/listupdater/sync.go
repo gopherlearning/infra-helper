@@ -48,7 +48,7 @@ func (s *service) syncAll(ctx context.Context) error {
 	return nil
 }
 
-func (s *service) syncOne(ctx context.Context, lst list) error {
+func (s *service) syncOne(ctx context.Context, lst List) error {
 	origPath := filepath.Join(s.origDir, lst.Name)
 	plainPath := filepath.Join(s.plainDir, lst.Name)
 
@@ -72,7 +72,7 @@ func (s *service) syncOne(ctx context.Context, lst list) error {
 	return nil
 }
 
-func (s *service) downloadToFile(ctx context.Context, lst list, destPath string) error {
+func (s *service) downloadToFile(ctx context.Context, lst List, destPath string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, lst.URL, nil)
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
@@ -136,7 +136,7 @@ func (s *service) downloadToFile(ctx context.Context, lst list, destPath string)
 	return nil
 }
 
-func applyAuth(req *http.Request, lst list) error {
+func applyAuth(req *http.Request, lst List) error {
 	// Auth (optional).
 	switch lst.AuthType {
 	case "":

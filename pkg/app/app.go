@@ -27,16 +27,24 @@ import (
 var (
 	isHealthy = new(atomic.Value)
 	isReady   = new(atomic.Value)
-	metrics   *prometheus.Registry
+	metrics   = prometheus.NewRegistry()
 	waitGroup = &sync.WaitGroup{}
 
 	// Jobs is the global set of registered background job names.
 	Jobs      = &sync.Map{}
-	jobMetric prometheus.GaugeVec
+	jobMetric = *prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "job",
+		Help: "Job name",
+	}, []string{"name"},
+	)
 	globalctx context.Context
 	cancelCtx context.CancelFunc
 	name      string
 )
+
+func SetName(n string) {
+	name = n
+}
 
 // Metrics returns the Prometheus registry used by the app.
 func Metrics() *prometheus.Registry {

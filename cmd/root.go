@@ -25,7 +25,7 @@ const (
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
-	Use:   "infra.helper",
+	Use:   "infra-helper",
 	Short: "Инструмент поддержки инфраструктуры",
 	Run: func(cmd *cobra.Command, _ []string) {
 		// Если нет подкоманды и установлен флаг --version
@@ -56,10 +56,11 @@ var rootCmd = &cobra.Command{
 				metrics = defaultMetricsAddr
 			}
 
-			// if metrics != "" {
-			// 	app.StartMetrics(app.AddJob("metrics"), metrics)
-			// 	log.Info().Msgf("метрики доступны по адресу: %s", metrics)
-			// }
+			if metrics != "" {
+				os.Setenv("METRICS", metrics)
+				app.SetName(cmd.CommandPath())
+				go app.StartMetrics(app.AddJob("metrics"))
+			}
 		}
 	},
 	PersistentPostRun: func(_ *cobra.Command, _ []string) {
@@ -92,7 +93,7 @@ func init() {
 	// when this action is called directly.
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "v", false, "включить debug-режим")
 	rootCmd.PersistentFlags().BoolVar(&version, "version", false, "показать версию приложения")
-	rootCmd.PersistentFlags().StringVar(&metrics, "metrics", "", metricsUsage)
+	rootCmd.PersistentFlags().StringVar(&metrics, "metrics", ":9101", metricsUsage)
 	rootCmd.PersistentFlags().BoolVar(&noMetrics, "no-metrics", false, "отключить экспорт метрик")
 
 	listupdater.Register(rootCmd)

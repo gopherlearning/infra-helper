@@ -26,19 +26,19 @@ const (
 )
 
 type service struct {
-	cfg      config
+	cfg      Config
 	origDir  string
 	plainDir string
-	lists    map[string]list
+	lists    map[string]List
 	client   *http.Client
 }
 
-func startListUpdater(cfg config) {
+func startListUpdater(cfg Config) {
 	svc := &service{
 		cfg:      cfg,
 		origDir:  filepath.Join(cfg.Dir, originalDirName),
 		plainDir: filepath.Join(cfg.Dir, plainDirName),
-		lists:    make(map[string]list, len(cfg.Lists)),
+		lists:    make(map[string]List, len(cfg.Lists)),
 		client:   &http.Client{Timeout: clientTimeout},
 	}
 
@@ -63,6 +63,8 @@ func startListUpdater(cfg config) {
 	go svc.runRefresher()
 	go svc.runHTTP()
 }
+
+// compile-time dependency: shared perms from sync.go
 
 func (s *service) runRefresher() {
 	jobCtx, onStop := app.AddJob("listUpdater.refresh")
