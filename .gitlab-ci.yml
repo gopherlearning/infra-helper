@@ -8,8 +8,8 @@ variables:
 build:image:
   stage: build
   image: docker:27
-  services:
-    - name: docker:27-dind
+  # services:
+  #   - name: docker:27-dind
   tags:
     - build
   variables:
