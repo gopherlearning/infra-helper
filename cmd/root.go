@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"os"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -19,7 +20,7 @@ var (
 	noMetrics bool
 )
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "infra.helper",
 	Short: "Инструмент поддержки инфраструктуры",
@@ -57,6 +58,13 @@ var rootCmd = &cobra.Command{
 			// }
 		}
 	},
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		time.Sleep(time.Second)
+		// 	log.Info().Msg("waiting for completion")
+		// 	log.Info().Msg("Дождались 123")
+		app.WG().Wait()
+		// 	log.Info().Msg("Дождались")
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -83,5 +91,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&metrics, "metrics", "", "адрес для экспорта метрик (по умолчанию :9001 при указании без значения)")
 	rootCmd.PersistentFlags().BoolVar(&noMetrics, "no-metrics", false, "отключить экспорт метрик")
 
-	rootCmd.AddCommand(listupdater.ListUpdaterCmd)
+	listupdater.Register(rootCmd)
 }

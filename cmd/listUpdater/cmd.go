@@ -1,22 +1,43 @@
 package listupdater
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"infra.helper/pkg/app"
 )
 
-// listUpdaterCmd represents the listUpdater command
-var ListUpdaterCmd = &cobra.Command{
+type config struct {
+	Lists []list
+}
+
+type list struct {
+	URL string
+	// "" - none
+	// basic - AuthData - user:password
+	// token - AuthData - token
+	AuthType string
+	AuthData interface{}
+}
+
+// listUpdaterCmd represents the listUpdater command.
+var listUpdaterCmd = &cobra.Command{
 	Use:   "list-updater",
 	Short: "Кеширующий прокси для обновляемых листов",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, onStop := app.AddJob("listUpdater")
 		defer onStop()
 
-		fmt.Println("listUpdater called")
+		var cfg config
+		err := app.ReadFromFile("config.yaml", &cfg)
+		if err != nil {
+			log.Error().Err(err).Msg("config broken")
+
+			return
+		}
+
+		log.Info().Msg("listUpdater called")
 
 		go func() {
 			time.Sleep(2 * time.Second)
@@ -24,6 +45,10 @@ var ListUpdaterCmd = &cobra.Command{
 		}()
 		<-ctx.Done()
 	},
+}
+
+func Register(parent *cobra.Command) {
+	parent.AddCommand(listUpdaterCmd)
 }
 
 func init() {

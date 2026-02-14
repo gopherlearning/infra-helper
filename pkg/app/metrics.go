@@ -15,6 +15,8 @@ import (
 )
 
 // StartMetrics .
+//
+//nolint:contextcheck
 func startMetrics() {
 	ctx, onStop := AddJob("metrics")
 
@@ -48,7 +50,7 @@ func startMetrics() {
 
 			// 	return
 			case "/readyz":
-				if isReady == nil || !isReady.Load().(bool) {
+				if r, ok := isReady.Load().(bool); !r || !ok {
 					resp.WriteHeader(http.StatusServiceUnavailable)
 					return
 				}
@@ -57,7 +59,7 @@ func startMetrics() {
 
 				return
 			case "/healthz":
-				if isHealthy == nil || !isHealthy.Load().(bool) {
+				if r, ok := isHealthy.Load().(bool); !r || !ok {
 					resp.WriteHeader(http.StatusServiceUnavailable)
 					return
 				}

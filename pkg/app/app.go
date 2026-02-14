@@ -21,16 +21,15 @@ import (
 )
 
 var (
-	isHealthy   = new(atomic.Value)
-	isReady     = new(atomic.Value)
-	metrics     *prometheus.Registry
-	wg          = &sync.WaitGroup{}
-	Jobs        = &sync.Map{}
-	jobMetric   prometheus.GaugeVec
-	globalctx   context.Context
-	cancelCtx   context.CancelFunc
-	name        string
-	description string
+	isHealthy = new(atomic.Value)
+	isReady   = new(atomic.Value)
+	metrics   *prometheus.Registry
+	wg        = &sync.WaitGroup{}
+	Jobs      = &sync.Map{}
+	jobMetric prometheus.GaugeVec
+	globalctx context.Context
+	cancelCtx context.CancelFunc
+	name      string
 )
 
 func Metrics() *prometheus.Registry {
@@ -67,24 +66,23 @@ func Init(verbose bool) {
 
 	}
 
-	globalctx, cancelCtx = context.WithCancel(context.Background())
+	globalctx = context.Background()
+	globalctx, cancelCtx = context.WithCancel(globalctx)
 	terminate := make(chan os.Signal, 1)
-	wg := &sync.WaitGroup{}
-
 	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-	wg.Add(1)
 
 	go func() {
 		waitDone := make(chan struct{})
 		go func() {
 			wg.Wait()
-			waitDone <- struct{}{}
+			close(waitDone)
 		}()
 
 		select {
 		case <-terminate:
 			log.Info().Msg("stopped by terminate signal")
 			cancelCtx()
+			// time.Sleep(time.Second)
 		case <-globalctx.Done():
 			log.Info().Msg("stopped by Cancel call")
 
@@ -98,8 +96,6 @@ func Init(verbose bool) {
 			log.Error().Msg("Program exit by timeout")
 			os.Exit(1)
 		}
-
-		os.Exit(0)
 	}()
 }
 
@@ -113,18 +109,16 @@ func AddJob(name string) (context.Context, func()) {
 		panic(fmt.Sprintf("null job name: %s", name))
 	}
 
-	wg.Add(1)
-
-	_, ok := Jobs.Load(name)
-	if ok {
+	_, loaded := Jobs.LoadOrStore(name, struct{}{})
+	if loaded {
 		panic(fmt.Sprintf("dublicate job name: %s", name))
 	}
+
+	wg.Add(1)
 
 	if jobMetric.MetricVec != nil {
 		jobMetric.With(prometheus.Labels{"name": name}).Set(1)
 	}
-
-	Jobs.Store(name, struct{}{})
 
 	log.Info().Msgf("%s started", name)
 
