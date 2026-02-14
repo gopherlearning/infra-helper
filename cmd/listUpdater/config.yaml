@@ -1,0 +1,6 @@
+dir: ./data
+listen: :8080
+refresh: 1h
+lists:
+  - name: rkn.dat
+    url: https://github.com/kutovoys/ru_gov_zapret/releases/latest/download/zapret.dat

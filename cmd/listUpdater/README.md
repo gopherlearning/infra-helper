@@ -1,0 +1,54 @@
+## list-updater
+
+Кеширующий прокси для списков ("original" + "plain").
+
+### Config
+
+File: `config.yaml` (YAML).
+
+Example:
+
+```yaml
+dir: ./data
+listen: :8080
+refresh: 1h
+lists:
+  - name: rkn.dat
+    url: https://github.com/kutovoys/ru_gov_zapret/releases/latest/download/zapret.dat
+```
+
+Behavior:
+
+- Original is saved to `dir/original/<name>` and served at `/<name>`.
+- Plain is saved to `dir/plain/<name>` and served at `/plain/<name>`.
+- If the original is a protobuf .dat (GeoSiteList), plain is generated as one domain per line.
+- If the original is already plaintext, `/plain/...` serves the same content as-is.
+
+---
+
+## Opisanie (RU)
+
+`list-updater` - это сервис, который:
+
+- по конфигурации `config.yaml` периодически скачивает списки по URL
+- кеширует оригинал в `dir/original/<name>`
+- готовит "плоский" (plain) вариант в `dir/plain/<name>`
+- отдаёт:
+  - `GET /<name>` - оригинал
+  - `GET /plain/<name>` - plain (по 1 домену/IP на строку)
+
+Пример (аналог `wget -O zapret.dat ...`, но с именем `rkn.dat` в сервисе):
+
+```yaml
+dir: ./data
+listen: :8080
+refresh: 1h
+lists:
+  - name: rkn.dat
+    url: https://github.com/kutovoys/ru_gov_zapret/releases/latest/download/zapret.dat
+```
+
+Детали plain-конверсии:
+
+- если оригинал - protobuf `.dat` (GeoSiteList), `/plain/...` строится из доменов (dedup + sort)
+- если оригинал уже текстовый (1 значение на строку), `/plain/...` отдаёт его же
