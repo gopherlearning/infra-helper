@@ -2,33 +2,39 @@ stages:
   - build
 
 variables:
-  # Using host Docker daemon via mounted socket (no dind).
-  DOCKER_HOST: "unix:///var/run/docker.sock"
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE/infra-helper"
 
 build:image:
   stage: build
-  image: docker:27
+  # Build & push without Docker daemon (works with docker executor).
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
   tags:
     - build
-  variables:
-    IMAGE_NAME: "$CI_REGISTRY_IMAGE/infra-helper"
-  before_script:
-    - docker version
-    - docker info
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
-    - docker build --pull -f Dockerfile -t "$IMAGE_NAME:$CI_COMMIT_SHA" .
-    - docker push "$IMAGE_NAME:$CI_COMMIT_SHA"
+    - mkdir -p /kaniko/.docker
     - |
+      cat > /kaniko/.docker/config.json <<EOF
+      {"auths":{"$CI_REGISTRY":{"username":"$CI_REGISTRY_USER","password":"$CI_REGISTRY_PASSWORD"}}}
+      EOF
+    - |
+      DESTS="--destination $IMAGE_NAME:$CI_COMMIT_SHA"
+
       if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        docker tag "$IMAGE_NAME:$CI_COMMIT_SHA" "$IMAGE_NAME:latest"
-        docker push "$IMAGE_NAME:latest"
+        DESTS="$DESTS --destination $IMAGE_NAME:latest"
       fi
-    - |
+
       if [ -n "$CI_COMMIT_TAG" ]; then
-        docker tag "$IMAGE_NAME:$CI_COMMIT_SHA" "$IMAGE_NAME:$CI_COMMIT_TAG"
-        docker push "$IMAGE_NAME:$CI_COMMIT_TAG"
+        DESTS="$DESTS --destination $IMAGE_NAME:$CI_COMMIT_TAG"
       fi
+
+      /kaniko/executor \
+        --context "$CI_PROJECT_DIR" \
+        --dockerfile "$CI_PROJECT_DIR/Dockerfile" \
+        --cache=true \
+        --cache-repo "$IMAGE_NAME/cache" \
+        $DESTS
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_BRANCH
