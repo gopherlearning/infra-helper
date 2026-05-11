@@ -7,7 +7,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"infra.helper/cmd/dns"
 	listupdater "infra.helper/cmd/listUpdater"
+	"infra.helper/cmd/stup"
 	"infra.helper/pkg/app"
 )
 
@@ -100,4 +102,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&noMetrics, "no-metrics", false, "отключить экспорт метрик")
 
 	listupdater.Register(rootCmd)
+	stup.Register(rootCmd)
+	dns.Register(rootCmd)
 }

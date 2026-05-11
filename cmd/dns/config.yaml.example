@@ -1,0 +1,37 @@
+server:
+  listen: "0.0.0.0:53"
+  protocols: [udp, tcp]
+
+admin:
+  listen: ":8080"
+
+fakeip:
+  ipv4_range: "198.18.0.0/15"
+  ipv6_range: "fc00::/7"
+  ttl: 1
+
+upstreams:
+  - address: "tls://1.1.1.1:853"
+  - address: "tls://77.88.8.8:853"
+  - address: "https://8.8.8.8/dns-query"
+  - address: "udp://77.88.8.8:53"
+
+rulesets:
+  - url: "https://github.com/kutovoys/ru_gov_zapret/releases/download/20260511034407/zapret.dat"
+    update_interval: "24h"
+    tags:
+      - name: "zapret"
+        action: fakeip
+      - name: "zapret-zapad"
+        action: fakeip
+
+cache:
+  enabled: true
+  size: 8192
+  ttl_override: false
+
+log:
+  level: "info"
+  format: "text"
+
+cache_dir: "./cache"
