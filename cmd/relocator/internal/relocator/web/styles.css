@@ -1,0 +1,56 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0e1116;
+  color: #e6edf3;
+  padding: 20px;
+}
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+h1 { margin: 0; font-size: 24px; }
+h2 { font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: #8b949e; margin: 24px 0 12px; }
+.meta { display: flex; gap: 16px; align-items: center; font-size: 13px; color: #8b949e; }
+button {
+  background: #238636;
+  color: white;
+  border: 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover { background: #2ea043; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.card.warn { border-color: #6e2c0a; background: #190f0a; }
+.label { font-size: 11px; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; }
+.value { font-size: 24px; font-weight: 600; margin-top: 4px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.bucket {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 14px;
+}
+.bucket header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.bucket h3 { margin: 0; font-size: 15px; }
+.bucket .sub { font-size: 11px; color: #8b949e; }
+.bucket .counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; font-size: 12px; margin-top: 10px; }
+.bucket .counts span { color: #8b949e; }
+.bucket .counts b { color: #e6edf3; }
+.bucket .err { color: #f85149; font-size: 11px; margin-top: 6px; word-break: break-all; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #21262d; vertical-align: top; }
+th { color: #8b949e; font-weight: 500; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+tr.error td { background: rgba(248, 81, 73, 0.08); }
+tr.warn td { background: rgba(210, 153, 34, 0.08); }
+code { font-family: Menlo, Consolas, monospace; font-size: 11px; color: #79c0ff; }

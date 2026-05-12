@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>infra-helper · relocator</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header>
+  <h1>relocator</h1>
+  <div class="meta">
+    <span id="last-refresh">—</span>
+    <label><input type="checkbox" id="auto" checked> auto-refresh</label>
+    <button id="refresh">refresh now</button>
+  </div>
+</header>
+
+<section id="totals" class="cards">
+  <div class="card"><div class="label">downloaded</div><div class="value" data-total="downloaded">0</div></div>
+  <div class="card"><div class="label">extracted</div><div class="value" data-total="extracted">0</div></div>
+  <div class="card"><div class="label">posted</div><div class="value" data-total="posted">0</div></div>
+  <div class="card"><div class="label">deleted</div><div class="value" data-total="deleted">0</div></div>
+  <div class="card warn"><div class="label">download_failed</div><div class="value" data-total="downloadFailed">0</div></div>
+  <div class="card warn"><div class="label">extract_failed</div><div class="value" data-total="extractFailed">0</div></div>
+  <div class="card warn"><div class="label">password_failed</div><div class="value" data-total="passwordFailed">0</div></div>
+  <div class="card warn"><div class="label">post_failed</div><div class="value" data-total="postFailed">0</div></div>
+</section>
+
+<section>
+  <h2>Buckets</h2>
+  <div id="buckets" class="grid"></div>
+</section>
+
+<section>
+  <h2>Recent events</h2>
+  <table id="events">
+    <thead><tr><th>time</th><th>level</th><th>bucket</th><th>object</th><th>message</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

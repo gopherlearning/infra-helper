@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"infra.helper/cmd/dns"
 	listupdater "infra.helper/cmd/listUpdater"
+	"infra.helper/cmd/relocator"
 	"infra.helper/cmd/stup"
 	"infra.helper/pkg/app"
 )
@@ -104,4 +105,5 @@ func init() {
 	listupdater.Register(rootCmd)
 	stup.Register(rootCmd)
 	dns.Register(rootCmd)
+	relocator.Register(rootCmd)
 }

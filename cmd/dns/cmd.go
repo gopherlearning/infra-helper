@@ -8,6 +8,8 @@ package dns
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -23,6 +25,7 @@ var (
 	errProtocolRequired = errors.New("server.protocols must contain at least one of udp/tcp")
 	errFakeipRange      = errors.New("fakeip.ipv4_range is required")
 	errUpstreamRequired = errors.New("at least one upstream is required")
+	errProxyScheme      = errors.New("proxy must be http/https/socks5 url")
 )
 
 var dnsCmd = &cobra.Command{
@@ -87,12 +90,38 @@ func validateConfig(cfg svc.Config) error {
 		return errFakeipRange
 	}
 
+	if cfg.Proxy != "" {
+		proxyErr := validateProxyURL(cfg.Proxy)
+		if proxyErr != nil {
+			return fmt.Errorf("%w: proxy: %w", errInvalidConfig, proxyErr)
+		}
+	}
+
 	upstreamErr := validateUpstreams(cfg.Upstreams)
 	if upstreamErr != nil {
 		return upstreamErr
 	}
 
 	return validateRulesets(cfg.Rulesets)
+}
+
+func validateProxyURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("parse: %w", err)
+	}
+
+	switch strings.ToLower(parsed.Scheme) {
+	case "http", "https", "socks5", "socks5h":
+	default:
+		return fmt.Errorf("%w: %q", errProxyScheme, raw)
+	}
+
+	if parsed.Host == "" {
+		return fmt.Errorf("%w: host missing in %q", errProxyScheme, raw)
+	}
+
+	return nil
 }
 
 func validateServer(srv svc.ServerConfig) error {
@@ -140,6 +169,13 @@ func validateRulesets(rulesets []svc.RulesetEntry) error {
 		}
 
 		seenURL[ruleset.URL] = struct{}{}
+
+		if ruleset.Proxy != "" && ruleset.Proxy != svc.ProxyDirect {
+			proxyErr := validateProxyURL(ruleset.Proxy)
+			if proxyErr != nil {
+				return fmt.Errorf("%w: rulesets[%d].proxy: %w", errInvalidConfig, idx, proxyErr)
+			}
+		}
 
 		tagsErr := validateTags(ruleset.Tags, idx)
 		if tagsErr != nil {

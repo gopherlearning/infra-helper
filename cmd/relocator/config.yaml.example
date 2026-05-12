@@ -1,0 +1,67 @@
+# Адрес HTTP-сервера со страницей состояния и API.
+listen: ":8090"
+
+# Путь к embedded BoltDB.
+db_path: "./data/relocator.db"
+
+# Где хранить временные скачанные архивы (удаляются после обработки).
+work_dir: "./data/relocator/work"
+
+# Карантин для архивов, которые не удалось распаковать/расшифровать.
+quarantine: "./data/relocator/quar"
+
+# Базовый период опроса. Можно переопределить per-bucket.
+poll_interval: 1m
+
+# Максимальное число одновременно обрабатываемых объектов (грубая оценка
+# производительности, лимит per-bucket задаётся пайплайном).
+max_workers: 4
+
+# Размер ring-буфера событий, отображаемых на статус-странице.
+event_log: 500
+
+# Защита статус-страницы (опционально). Если user пуст, basic auth выключен.
+basic_auth:
+  user: ""
+  pass: ""
+
+# Куда POST'ить каждый JSON-файл из архивов.
+post:
+  url: "https://ingest.example.com/relocator"
+  timeout: 30s
+  retries: 3
+  retry_backoff: 5s
+  headers:
+    Authorization: "Bearer changeme"
+  # Если задано — подписывает тело SHA-256 HMAC и кладёт в hmac_header.
+  hmac_secret: ""
+  hmac_header: "X-Signature"
+
+# Список паролей, которые перебираются для запароленных zip'ов.
+passwords:
+  - "first-password"
+  - "second-password"
+
+# Источники. Endpoint без схемы; use_ssl управляет TLS.
+buckets:
+  - name: "yc-prod"
+    endpoint: "storage.yandexcloud.net"
+    region: "ru-central1"
+    bucket: "incoming"
+    access_key: "YCAJExxxx"
+    secret_key: "yyyy"
+    prefix: "uploads/"
+    use_ssl: true
+    delete_after: true       # удалять объект после успешной обработки
+    poll_interval: 2m         # переопределяет глобальный
+    pattern: "*.zip"          # glob по имени файла; пусто — без фильтра
+    max_size: 1073741824      # 1 GiB hard cap
+
+  - name: "minio-local"
+    endpoint: "minio.internal:9000"
+    region: "us-east-1"
+    bucket: "ingest"
+    access_key: "minio"
+    secret_key: "minio12345"
+    use_ssl: false
+    delete_after: false

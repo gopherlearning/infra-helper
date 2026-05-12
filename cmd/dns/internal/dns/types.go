@@ -17,6 +17,7 @@ type Config struct {
 	Cache     CacheConfig     `mapstructure:"cache"     yaml:"cache"`
 	Log       LogConfig       `mapstructure:"log"       yaml:"log"`
 	CacheDir  string          `default:"./cache"        mapstructure:"cache_dir" yaml:"cache_dir"`
+	Proxy     string          `                         mapstructure:"proxy"     yaml:"proxy"`
 }
 
 // ServerConfig is the DNS listener config.
@@ -52,7 +53,13 @@ type RulesetEntry struct {
 	URL            string        `              mapstructure:"url"             yaml:"url"`
 	UpdateInterval time.Duration `default:"24h" mapstructure:"update_interval" yaml:"update_interval"`
 	Tags           []TagAction   `              mapstructure:"tags"            yaml:"tags"`
+	// Proxy is the per-ruleset proxy URL override. Empty means use Config.Proxy.
+	// Set to "direct" to bypass the global proxy for this ruleset.
+	Proxy string `mapstructure:"proxy" yaml:"proxy"`
 }
+
+// ProxyDirect disables the global proxy for a single ruleset.
+const ProxyDirect = "direct"
 
 // TagAction maps a geosite tag to an action.
 type TagAction struct {

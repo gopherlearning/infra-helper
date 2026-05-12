@@ -16,9 +16,15 @@ upstreams:
   - address: "https://8.8.8.8/dns-query"
   - address: "udp://77.88.8.8:53"
 
+# Optional global proxy for downloading rulesets. Supports http(s):// and socks5(h)://.
+# proxy: "socks5://127.0.0.1:1080"
+
 rulesets:
   - url: "https://github.com/kutovoys/ru_gov_zapret/releases/download/20260511034407/zapret.dat"
     update_interval: "24h"
+    # Per-ruleset proxy override. Empty = inherit the global "proxy" above.
+    # Set to "direct" to bypass the global proxy for just this ruleset.
+    # proxy: "http://user:pass@proxy.example:3128"
     tags:
       - name: "zapret"
         action: fakeip
